@@ -31,8 +31,10 @@ var broadcast = make(chan Message)
 
 func main() {
 	http.HandleFunc("/", homePage)
-	http.HandleFunc("/ws", handleConnections)
+	http.HandleFunc("/invoice", invoicePage)
 
+	http.HandleFunc("/ws", handleConnections)
+	http.HandleFunc("/generate-invoice", generateInvoiceHandler)
 	go handleMessages()
 
 	fmt.Println("Server started on :8080")
@@ -146,6 +148,7 @@ func handleMessages() {
 				}
 				break // Exit the for loop as we found the client
 			}
+
 		}
 		if !clientFound {
 			fmt.Printf("Client for username %s not found\n", msg.Username)

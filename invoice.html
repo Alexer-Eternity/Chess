@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f9f9f9;
+            animation: fadeIn 0.75s ease-out;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            opacity: 0;
+            animation: fadeInUp 1s ease-out forwards;
+        }
+
+        label {
+            display: block;
+            margin-top: 10px;
+            font-weight: bold;
+            opacity: 0;
+            animation: fadeIn 1.5s ease-out forwards;
+            animation-delay: 0.5s;
+        }
+
+        input, textarea, button {
+            margin-top: 5px;
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        /* Hover effect for input fields */
+        input:hover, textarea:hover, button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Button focus effect */
+        button:focus {
+            outline: none;
+            box-shadow: 0 0 5px 2px rgba(41, 128, 185, 0.7);
+        }
+
+        /* Table with hover effects */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            opacity: 0;
+            animation: fadeInUp 2s ease-out forwards;
+            animation-delay: 0.75s;
+        }
+
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f4f4f4;
+        }
+
+        tr:hover {
+            background-color: #f1f1f1;
+            transition: background-color 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            0% {
+                opacity: 0;
+            }
+            100% {
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeInUp {
+            0% {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Invoice Generator</h1>
+    <form id="invoiceForm">
+        <label for="customer">Customer Name</label>
+        <input type="text" id="customer" name="customer" required>
+
+        <h2>Items</h2>
+        <table id="itemsTable">
+            <thead>
+            <tr>
+                <th>Description</th>
+                <th>Quantity</th>
+                <th>Price</th>
+                <th>Action</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td><input type="text" name="description" required></td>
+                <td><input type="number" name="quantity" min="1" required></td>
+                <td><input type="number" name="price" step="0.01" min="0" required></td>
+                <td><button type="button" onclick="removeRow(this)">Remove</button></td>
+            </tr>
+            </tbody>
+        </table>
+        <button type="button" onclick="addItem()">Add Item</button>
+
+        <button type="submit">Generate Invoice</button>
+    </form>
+</div>
+
+<script>
+    function addItem() {
+        const table = document.getElementById('itemsTable').getElementsByTagName('tbody')[0];
+        const newRow = table.insertRow();
+
+        const descriptionCell = newRow.insertCell(0);
+        const quantityCell = newRow.insertCell(1);
+        const priceCell = newRow.insertCell(2);
+        const actionCell = newRow.insertCell(3);
+
+        descriptionCell.innerHTML = '<input type="text" name="description" required>';
+        quantityCell.innerHTML = '<input type="number" name="quantity" min="1" required>';
+        priceCell.innerHTML = '<input type="number" name="price" step="0.01" min="0" required>';
+        actionCell.innerHTML = '<button type="button" onclick="removeRow(this)">Remove</button>';
+    }
+
+    function removeRow(button) {
+        const row = button.parentNode.parentNode;
+        row.parentNode.removeChild(row);
+    }
+
+    document.getElementById('invoiceForm').addEventListener('submit', async function(event) {
+        event.preventDefault();
+
+        const customer = document.getElementById('customer').value;
+        const rows = document.querySelectorAll('#itemsTable tbody tr');
+        const items = Array.from(rows).map(row => {
+            const description = row.querySelector('input[name="description"]').value;
+            const quantity = parseInt(row.querySelector('input[name="quantity"]').value, 10);
+            const price = parseFloat(row.querySelector('input[name="price"]').value);
+            return { description, quantity, price };
+        });
+
+        const response = await fetch('/generate-invoice', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ customer, items }),
+        });
+
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `invoice_${customer}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        } else {
+            alert('Failed to generate invoice');
+        }
+    });
+</script>
+</body>
+</html>
+

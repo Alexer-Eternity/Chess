@@ -1,137 +1,108 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Go Chess Game</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      padding: 20px;
-    }
-    h1 {
-      margin-bottom: 20px;
-    }
-    .chessboard {
-      display: grid;
-      grid-template-columns: repeat(8, 60px); /* 8 columns */
-      grid-template-rows: repeat(8, 60px);    /* 8 rows */
-      gap: 1px;
-    }
-    .chessboard div {
-      width: 60px;
-      height: 60px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-size: 24px;
-      font-weight: bold;
-    }
-    .white {
-      background-color: #f0d9b5;
-    }
-    .black {
-      background-color: #b58863;
-    }
-    #moveInput {
-      margin-top: 20px;
-      padding: 5px;
-      font-size: 18px;
-    }
-    #sendMove {
-      padding: 5px 15px;
-      font-size: 18px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Site</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+            padding: 20px;
+            animation: fadeIn 0.75s ease-out;
+        }
+
+        h1 {
+            color: #2C3E50;
+            font-size: 36px;
+            text-align: center;
+            margin-bottom: 20px;
+            opacity: 0;
+            animation: fadeInUp 1s ease-out forwards;
+        }
+
+        h2 {
+            color: #34495E;
+            font-size: 24px;
+            margin-bottom: 10px;
+            opacity: 0;
+            animation: fadeInUp 1.5s ease-out forwards;
+            animation-delay: 0.5s;
+        }
+
+        p {
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            opacity: 0;
+            animation: fadeInUp 1.5s ease-out forwards;
+            animation-delay: 1s;
+        }
+
+        a {
+            text-decoration: none;
+            font-size: 18px;
+            color: #2980B9;
+            padding: 10px;
+            background-color: #ecf0f1;
+            border-radius: 5px;
+            transition: background-color 0.3s ease, transform 0.3s ease;
+        }
+
+        a:hover {
+            background-color: #bdc3c7;
+            transform: scale(1.05);
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            opacity: 0;
+            animation: fadeInUp 2s ease-out forwards;
+            animation-delay: 1s;
+        }
+
+        @keyframes fadeIn {
+            0% {
+                opacity: 0;
+            }
+            100% {
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeInUp {
+            0% {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+    </style>
 </head>
 <body>
-<h1>Go Chess Game</h1>
-<div class="chessboard" id="chessboard"></div>
-
-<input type="text" id="moveInput" placeholder="Enter your move (e.g., e2e4)">
-<button id="sendMove">Make Move</button>
-
-<script>
-  var ws = new WebSocket("wss://alexer.dev/ws");
-
-  const chessboardElement = document.getElementById("chessboard");
-  const moveInput = document.getElementById("moveInput");
-  const sendMoveButton = document.getElementById("sendMove");
-  let username = ""; // Variable to store the assigned username
-
-
-  ws.onopen = function() {
-    console.log("Connected to WebSocket");
-  };
-
-  // Initialize chessboard grid with alternating colors
-  function initializeBoard() {
-    for (let i = 0; i < 8; i++) {
-      for (let j = 0; j < 8; j++) {
-        const square = document.createElement('div');
-        square.classList.add((i + j) % 2 === 0 ? 'white' : 'black');
-        chessboardElement.appendChild(square);
-      }
-    }
-  }
-
-  // Clean the board string: remove ABCDEFGH, 12345678, treat dashes as empty squares
-  function cleanBoardString(boardString) {
-    // Remove row labels (1-8) and column labels (A-H), and trim spaces
-    boardString = boardString.replace(/[ABCDEFGH1-8]/g, '').trim();
-    return boardString;
-  }
-
-  // Map the cleaned chessboard string to the grid
-  function renderBoard(boardString) {
-    const squares = chessboardElement.children;
-
-    // Split the board into rows without trimming spaces in the middle
-    const rows = cleanBoardString(boardString).split("\n");
-
-    rows.forEach((row, rowIndex) => {
-      // Trim leading and trailing spaces from the row but preserve spaces in the middle
-      const pieces = row.split(/\s+/);
-
-      pieces.forEach((piece, colIndex) => {
-        // Set the content of the square to the chess piece or leave it blank for empty spaces
-        squares[rowIndex * 8 + colIndex].textContent = piece === "-" ? " " : piece;      });
-    });
-  }
-
-  // When WebSocket receives new board state, update the chessboard
-  ws.onmessage = function(event) {
-    const data = JSON.parse(event.data);
-    if (username == "") username = data.username;
-    // Store the assigned username
-
-
-      // Handle other incoming messages
-    renderBoard(data.move);
-
-  };
-
-
-  sendMoveButton.onclick = function() {
-    // Create a JSON object containing username, message, and move
-    const payload = {
-      username: username,
-      //message: "Move",
-      move: moveInput.value
-    };
-
-    // Send the JSON object as a string
-    ws.send(JSON.stringify(payload));
-
-    // Clear input fields
-//    messageInput.value = '';
-    moveInput.value = '';
-  };
-
-  // Initialize the board on page load
-  initializeBoard();
-</script>
-
+    <div class="container">
+        <h1>Website for Experimental Features</h1>
+        <h2>About This Site</h2>
+        <p>This website is now for testing experimental features since Google App Engine does not support WebSocket.</p>
+        <a href="invoice">Invoice</a>
+    </div>
 </body>
 </html>
+
+
