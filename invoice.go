@@ -5,7 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/jung-kurt/gofpdf"
+	"io"
+	"log"
 	"net/http"
+	"os"
+	"strconv"
 	"time"
 )
 
@@ -35,8 +39,10 @@ func generateInvoiceHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var reqData struct {
-		Customer string `json:"customer"`
-		Items    []Item `json:"items"`
+		Customer   string `json:"customer"`
+		Items      []Item `json:"items"`
+		LogoURL    string `json:"logoURL"`
+		ColorTheme string `json:"colorTheme"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&reqData); err != nil {
@@ -71,9 +77,35 @@ func generateInvoiceHandler(w http.ResponseWriter, r *http.Request) {
 	// Generate PDF
 	pdf := gofpdf.New("P", "mm", "A4", "")
 	pdf.AddPage()
+
+	pdf.SetTextColor(parseColor(reqData.ColorTheme))
+	// Add Logo if provided
+	if reqData.LogoURL != "" {
+		response, err := http.Get(reqData.LogoURL)
+		if err != nil {
+			log.Printf("Failed to download logo: %v", err)
+		} else {
+			defer response.Body.Close()
+			imgFilePath := "/temp/logo.png" // Path to save the logo temporarily
+			file, err := os.Create(imgFilePath)
+			if err != nil {
+				log.Printf("Failed to create temp file for logo: %v", err)
+			} else {
+				defer file.Close()
+				_, err := io.Copy(file, response.Body)
+				if err != nil {
+					log.Printf("Failed to save logo to temp file: %v", err)
+				} else {
+
+					pdf.Image(imgFilePath, 170, 10, 30, 0, false, "", 0, "")
+				}
+			}
+		}
+	}
+
 	pdf.SetFont("Arial", "B", 16)
 	pdf.Cell(0, 10, "Invoice")
-	pdf.Ln(10)
+	pdf.Ln(20)
 
 	pdf.SetFont("Arial", "", 12)
 	pdf.Cell(0, 10, fmt.Sprintf("Invoice ID: %s", invoice.InvoiceID))
@@ -121,4 +153,28 @@ func generateInvoiceHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=invoice_%s.pdf", invoice.InvoiceID))
 	w.WriteHeader(http.StatusOK)
 	w.Write(buf.Bytes())
+}
+func parseColor(hexColor string) (int, int, int) {
+	// Ensure the hex string starts with '#'
+	if len(hexColor) != 7 || hexColor[0] != '#' {
+		return 0, 0, 0 // Invalid hex color
+	}
+
+	// Parse the hex color string to integers
+	r, err := strconv.ParseInt(hexColor[1:3], 16, 0)
+	if err != nil {
+		return 0, 0, 0 // Error parsing red component
+	}
+
+	g, err := strconv.ParseInt(hexColor[3:5], 16, 0)
+	if err != nil {
+		return 0, 0, 0 // Error parsing green component
+	}
+
+	b, err := strconv.ParseInt(hexColor[5:7], 16, 0)
+	if err != nil {
+		return 0, 0, 0 // Error parsing blue component
+	}
+
+	return int(r), int(g), int(b)
 }

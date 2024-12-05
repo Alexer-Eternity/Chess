@@ -28,7 +28,7 @@
             animation-delay: 0.5s;
         }
 
-        input, textarea, button {
+        input, textarea, button, select {
             margin-top: 5px;
             width: 100%;
             padding: 10px;
@@ -38,19 +38,16 @@
             transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
 
-        /* Hover effect for input fields */
-        input:hover, textarea:hover, button:hover {
+        input:hover, textarea:hover, button:hover, select:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
         }
 
-        /* Button focus effect */
         button:focus {
             outline: none;
             box-shadow: 0 0 5px 2px rgba(41, 128, 185, 0.7);
         }
 
-        /* Table with hover effects */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -106,6 +103,13 @@
         <label for="customer">Customer Name</label>
         <input type="text" id="customer" name="customer" required>
 
+        <label for="logo">Logo URL (optional)</label>
+        <input type="url" id="logo" name="logo" placeholder="https://example.com/logo.png">
+
+        <label for="colorTheme">Color Theme</label>
+        <Input type ="color" id="colorTheme" name="colorTheme">
+
+
         <h2>Items</h2>
         <table id="itemsTable">
             <thead>
@@ -156,6 +160,8 @@
         event.preventDefault();
 
         const customer = document.getElementById('customer').value;
+        const logoURL = document.getElementById('logo').value;
+        const colorTheme = document.getElementById('colorTheme').value;
         const rows = document.querySelectorAll('#itemsTable tbody tr');
         const items = Array.from(rows).map(row => {
             const description = row.querySelector('input[name="description"]').value;
@@ -169,7 +175,7 @@
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ customer, items }),
+            body: JSON.stringify({ customer, logoURL, colorTheme, items }),
         });
 
         if (response.ok) {
@@ -189,4 +195,3 @@
 </script>
 </body>
 </html>
-
