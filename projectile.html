@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Projectile Motion Simulator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f0f0f0;
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    .simulator {
+      max-width: 800px;
+      margin: 20px auto;
+      padding: 20px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    canvas {
+      display: block;
+      margin: 20px auto;
+      background-color: #d0f0ff;
+      border: 1px solid #ccc;
+    }
+
+    .controls {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    label {
+      font-weight: bold;
+      margin-right: 10px;
+    }
+
+    input[type="number"], select {
+      width: 100px;
+      padding: 5px;
+      margin: 0 10px;
+    }
+
+    button {
+      padding: 10px 20px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    #timer {
+      font-size: 1.2em;
+      margin-top: 10px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+<div class="simulator">
+  <h1>Projectile Motion Simulator</h1>
+
+  <div class="controls">
+    <label for="angle">Launch Angle (degrees):</label>
+    <input type="number" id="angle" value="45" min="0" max="90">
+
+    <label for="velocity">Initial Velocity (m/s):</label>
+    <input type="number" id="velocity" value="50" min="1">
+
+    <label for="gravity">Gravity (m/s<sup>2</sup>):</label>
+    <input type="number" id="gravity" value="9.8" step="0.1">
+
+    <label for="colorScheme">Color Scheme:</label>
+    <select id="colorScheme">
+      <option value="default">Default</option>
+      <option value="dark">Dark</option>
+      <option value="light">Light</option>
+    </select>
+
+    <button onclick="simulate()">Launch</button>
+  </div>
+
+  <div id="timer">Time: 0.00s</div>
+
+  <canvas id="simulationCanvas" width="800" height="400"></canvas>
+</div>
+
+<script>
+  const canvas = document.getElementById('simulationCanvas');
+  const ctx = canvas.getContext('2d');
+  const timerDisplay = document.getElementById('timer');
+  let timer = 0;
+  let timerInterval;
+
+  function simulate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const angle = parseFloat(document.getElementById('angle').value) * Math.PI / 180; // Convert to radians
+    const velocity = parseFloat(document.getElementById('velocity').value);
+    const gravity = parseFloat(document.getElementById('gravity').value);
+
+    const initialX = 50;
+    const initialY = canvas.height - 50; // Ground level
+    const timeStep = 0.02; // seconds
+
+    timer = 0;
+    clearInterval(timerInterval);
+    timerInterval = setInterval(() => {
+      timer += timeStep;
+      timerDisplay.textContent = `Time: ${timer.toFixed(2)}s`;
+    }, timeStep * 1000);
+
+    let time = 0;
+    let x = initialX;
+    let y = initialY;
+
+    const velocityX = velocity * Math.cos(angle);
+    const velocityY = velocity * Math.sin(angle);
+
+    function drawGroundAndGrid() {
+      ctx.fillStyle = '#444';
+      ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
+
+      ctx.strokeStyle = '#ccc';
+      ctx.lineWidth = 1;
+      ctx.font = '12px Arial';
+      ctx.fillStyle = '#000';
+      for (let i = 50; i < canvas.height - 50; i += 50) {
+        const height = (canvas.height - i - 50) / 10;
+        ctx.beginPath();
+        ctx.moveTo(0, canvas.height - i - 50);
+        ctx.lineTo(canvas.width, canvas.height - i - 50);
+        ctx.stroke();
+        ctx.closePath();
+        ctx.fillText(`${height.toFixed(1)} m`, 5, canvas.height - i - 55);
+      }
+    }
+
+    function update() {
+      time += timeStep;
+      x = initialX + velocityX * time;
+      y = initialY - (velocityY * time - 0.5 * gravity * time * time);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawGroundAndGrid();
+      ctx.beginPath();
+      ctx.arc(x, y, 5, 0, Math.PI * 2);
+      ctx.fillStyle = 'red';
+      ctx.fill();
+      ctx.closePath();
+      if (y >= initialY) {
+        clearInterval(simulationInterval);
+        clearInterval(timerInterval);
+      }
+    }
+
+    drawGroundAndGrid();
+    const simulationInterval = setInterval(update, timeStep * 1000);
+  }
+
+  document.getElementById('colorScheme').addEventListener('change', (event) => {
+    const scheme = event.target.value;
+    if (scheme === 'dark') {
+      document.body.style.backgroundColor = '#333';
+      document.body.style.color = '#fff';
+      canvas.style.backgroundColor = '#555';
+    } else if (scheme === 'light') {
+      document.body.style.backgroundColor = '#fff';
+      document.body.style.color = '#000';
+      canvas.style.backgroundColor = '#eef';
+    } else {
+      document.body.style.backgroundColor = '#f0f0f0';
+      document.body.style.color = '#000';
+      canvas.style.backgroundColor = '#d0f0ff';
+    }
+  });
+</script>
+</body>
+</html>

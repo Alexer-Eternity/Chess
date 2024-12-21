@@ -32,6 +32,7 @@ var broadcast = make(chan Message)
 func main() {
 	http.HandleFunc("/", homePage)
 	http.HandleFunc("/invoice", invoicePage)
+	http.HandleFunc("/projectile", projectilePage)
 
 	http.HandleFunc("/ws", handleConnections)
 	http.HandleFunc("/generate-invoice", generateInvoiceHandler)
@@ -44,6 +45,9 @@ func main() {
 	}
 }
 
+func projectilePage(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "projectile.html") // Serve the main.html file
+}
 func homePage(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "main.html") // Serve the main.html file
 }
