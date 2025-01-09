@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Todo List</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f0f0f0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .container {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      width: 400px;
+      padding: 20px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      opacity: 0;
+      animation: fadeInUp 2s ease-out forwards;
+      animation-delay: 1s;
+    }
+
+    @keyframes fadeIn {
+      0% {
+        opacity: 0;
+      }
+      100% {
+        opacity: 1;
+      }
+    }
+
+    @keyframes fadeInUp {
+      0% {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    h1 {
+      text-align: center;
+      font-size: 24px;
+    }
+
+    .todo-form {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 20px;
+    }
+
+    .todo-form input[type="text"], .todo-form input[type="email"], .todo-form input[type="number"], .todo-form select {
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      margin-bottom: 10px;
+    }
+
+    .todo-form button {
+      padding: 10px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .todo-form button:hover {
+      background-color: #0056b3;
+    }
+
+    .todo-list {
+      list-style: none;
+      padding: 0;
+    }
+
+    .todo-list li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+      border-bottom: 1px solid #ccc;
+    }
+
+    .todo-list li:last-child {
+      border-bottom: none;
+    }
+
+    .todo-list button {
+      background: none;
+      border: none;
+      color: red;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>Todo List</h1>
+  <form class="todo-form" id="todoForm">
+    <input type="text" id="todoInput" placeholder="Add a new task" required>
+    <input type="email" id="emailInput" placeholder="Your email" required>
+    <input type="number" id="frequencyInput" placeholder="Reminder frequency" min="1" required>
+    <select id="frequencyUnit">
+      <option value="days">Days</option>
+      <option value="hours">Hours</option>
+    </select>
+    <button type="submit">Add</button>
+  </form>
+  <ul class="todo-list" id="todoList"></ul>
+</div>
+
+<script>
+  const todoForm = document.getElementById('todoForm');
+  const todoInput = document.getElementById('todoInput');
+  const emailInput = document.getElementById('emailInput');
+  const frequencyInput = document.getElementById('frequencyInput');
+  const frequencyUnit = document.getElementById('frequencyUnit');
+  const todoList = document.getElementById('todoList');
+
+  const todos = [];
+
+  todoForm.addEventListener('submit', function(event) {
+    event.preventDefault();
+    const task = todoInput.value.trim();
+    const email = emailInput.value.trim();
+    const frequency = parseInt(frequencyInput.value);
+    const unit = frequencyUnit.value;
+
+    if (task && email && frequency) {
+      const listItem = document.createElement('li');
+      listItem.innerHTML = `
+          <span>${task}</span>
+          <button onclick="removeTask(this)">Delete</button>
+        `;
+      todoList.appendChild(listItem);
+
+      todos.push({ task, email, frequency, unit, completed: false, addedDate: new Date() });
+      todoInput.value = '';
+      frequencyInput.value = '';
+    }
+  });
+
+  function removeTask(button) {
+    const listItem = button.parentElement;
+    const taskText = listItem.querySelector('span').textContent;
+
+    const taskIndex = todos.findIndex(todo => todo.task === taskText);
+    if (taskIndex > -1) {
+      todos.splice(taskIndex, 1);
+    }
+
+    todoList.removeChild(listItem);
+  }
+
+  function checkAndSendReminders() {
+    const now = new Date();
+    const emailsToSend = {};
+
+    todos.forEach(todo => {
+      if (!todo.completed) {
+        const timeDifference = now - new Date(todo.addedDate);
+        let threshold;
+        if (todo.unit === 'days') {
+          threshold = todo.frequency * 24 * 60 * 60 * 1000; // Convert days to milliseconds
+        } else if (todo.unit === 'hours') {
+          threshold = todo.frequency * 60 * 60 * 1000; // Convert hours to milliseconds
+        }
+
+        if (timeDifference >= threshold) {
+          if (!emailsToSend[todo.email]) {
+            emailsToSend[todo.email] = [];
+          }
+          emailsToSend[todo.email].push(todo.task);
+        }
+      }
+    });
+
+    for (const [email, tasks] of Object.entries(emailsToSend)) {
+      sendEmailReminder(email, tasks);
+    }
+  }
+
+  function sendEmailReminder(email, tasks) {
+    fetch('https://api.sendemail.example.com/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        to: email,
+        subject: 'Todo Reminder',
+        message: `You have the following pending tasks:\n${tasks.map(task => `- ${task}`).join('\n')}`
+      })
+    })
+            .then(response => response.json())
+            .then(data => console.log('Email sent:', data))
+            .catch(error => console.error('Error sending email:', error));
+  }
+
+  setInterval(checkAndSendReminders, 60 * 60 * 1000); // Check reminders hourly
+</script>0
+</body>
+</html>

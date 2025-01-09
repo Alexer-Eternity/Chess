@@ -33,7 +33,8 @@ func main() {
 	http.HandleFunc("/", homePage)
 	http.HandleFunc("/invoice", invoicePage)
 	http.HandleFunc("/projectile", projectilePage)
-
+	http.HandleFunc("/todo", serveTodo)
+	http.HandleFunc("/sendemail", formatEmail)
 	http.HandleFunc("/ws", handleConnections)
 	http.HandleFunc("/generate-invoice", generateInvoiceHandler)
 	go handleMessages()
