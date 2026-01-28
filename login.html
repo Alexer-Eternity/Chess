@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Player Log In</title>
+    <link rel="stylesheet" href="main.css" /></head>
+<body>
+    <h1>Player Log In</h1>
+    <label>Your Player Name:</label>
+    <input type="text" id="playerId" value="Alice" />
+    <button onclick="saveAndEnter()" class ="btn-join"> Enter Game</button>
+    <script>
+        window.onload = function() {
+            const savedName = localStorage.getItem("chessPlayerName");
+            if (savedName) {
+                document.getElementById("playerId").value = savedName;
+            }
+        };
+        //TODO implement authentication via cookies THIS IS NOT SECUIRE
+        function saveAndEnter() {
+            const nameInput = document.getElementById("playerId");
+            const name = nameInput.value.trim();
+
+            if (name) {
+                localStorage.setItem("chessPlayerName", name);
+                window.location.href = "/"; 
+            } else {
+                alert("Please enter a valid name.");
+            }
+        }
+    </script>    
+</body>
+</html>

@@ -2,30 +2,16 @@
 <html>
 <head>
     <title>F# Chess Server</title>
-    <style>
-        body { font-family: sans-serif; padding: 2rem; max-width: 600px; margin: 0 auto; }
-        .box { border: 1px solid #ccc; padding: 1.5rem; border-radius: 8px; background: #f9f9f9; }
-        label { display: block; margin-top: 15px; font-weight: bold; }
-        input { width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box; }
-        .btn-group { margin-top: 20px; display: flex; gap: 10px; }
-        button { padding: 10px 15px; cursor: pointer; border: none; border-radius: 4px; color: white; flex: 1; }
-        .btn-join { background-color: #28a745; }
-        .btn-move { background-color: #007bff; }
-        button:hover { opacity: 0.9; }
-        #log { margin-top: 20px; padding: 10px; background: #eee; border-left: 5px solid #333; }
-        code { display: block; background: #333; color: #fff; padding: 10px; margin-top: 5px; overflow-x: auto; }
-    </style>
-</head>
+    <link rel="stylesheet" href="main.css" /></head>
 <body>
-    <h1>♟️ F# Chess Server</h1>
+    <h1>F# Chess Server</h1>
 
     <div class="box">
         <h3>1. Join a Game</h3>
         <label>Game ID:</label>
         <input type="text" id="gameId" value="GameRoom1" />
 
-        <label>Your Player Name:</label>
-        <input type="text" id="playerId" value="Alice" />
+
 
         <div class="btn-group">
             <button class="btn-join" onclick="joinGame('white')">Join as White</button>
@@ -50,11 +36,13 @@
     <code id="fenDisplay">rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1</code>
 
     <script>
+        const playerId = localStorage.getItem("chessPlayerName");
+            if (playerId===null) {
+                window.location.href = "/login"; 
+            }
         var pollId = null;
         async function joinGame(color) {
             const gameId = document.getElementById('gameId').value;
-            const playerId = document.getElementById('playerId').value;
-            const log = document.getElementById('log');
 
             try {
                 const response = await fetch('/api/join', {
@@ -63,23 +51,20 @@
                     body: JSON.stringify({ gameId, playerId, color })
                 });
                 const result = await response.json();
-                log.innerText = result.message;
+                alert(result.message);
                 startPolling();
             } catch (err) {
                 log.innerText = "Error: " + err.message;
             }
         }
         function startPolling() {
-        // Safety: Stop any existing timer before starting a new one
             if (pollId) clearInterval(pollId);
-        
-            // Start the loop and save the ID
-            pollId = setInterval(refreshGame, 1000);
+            //changed polling to 2s to save on server time
+            pollId = setInterval(refreshGame, 2000);
             console.log("Polling started...");
         }
         async function sendMove() {
             const gameId = document.getElementById('gameId').value;
-            const playerId = document.getElementById('playerId').value;
             const move = document.getElementById('move').value;
             const fenDisplay = document.getElementById('fenDisplay');
 
@@ -104,7 +89,6 @@
         }
 
 
-    // Polling Function
     async function refreshGame() {
         const gameId = document.getElementById('gameId').value;
         const fenDisplay = document.getElementById('fenDisplay');
@@ -135,7 +119,6 @@
         }
     }
 
-    // Run every 1 second
     </script>
 </body>
 </html>

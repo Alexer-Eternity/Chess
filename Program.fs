@@ -2,6 +2,7 @@ open System
 open System.IO
 open Microsoft.AspNetCore.Builder
 open Microsoft.Extensions.Hosting
+open Microsoft.AspNetCore.Hosting
 open Microsoft.Extensions.DependencyInjection
 open Giraffe
 open ChessDotNet
@@ -46,8 +47,6 @@ let isPlayerTurn (fen: string) (game: GameState) (playerId: string) =
         game.BlackPlayerId = playerId // It's Black's turn, is this player Black?
 let calculateNewFen (currentFen: string) (moveString: string) :Result<(string * string), string> =
     try
-        printfn "DEBUG: 1. Input FEN: %s" currentFen
-        printfn "DEBUG: 2. Attempting Move: %s" moveString
 
         // 1. Create Game
         let game = ChessGame(currentFen)
@@ -70,18 +69,16 @@ let calculateNewFen (currentFen: string) (moveString: string) :Result<(string * 
             let move = Move(src, dst, game.WhoseTurn, promotion)
 
             // 4. Execute
-            printfn "DEBUG: 3. Turn is: %A" game.WhoseTurn
             let status = game.MakeMove(move, false)
-            printfn "DEBUG: 4. Move Status: %A" status
 
             if status = MoveType.Invalid then
-                Error $"Engine says Invalid Move: {moveString}"
+                Error $"Invalid Move: {moveString}"
             else
                 
                 let opponent = game.WhoseTurn
                 let gameResult =
                     if game.IsCheckmated(opponent) then
-                        if opponent = Player.White then "BlackWins" else "WhiteWins"
+                        if opponent = Player.White then "Black Wins" else "White Wins"
                     elif game.IsStalemated(opponent) || game.IsInsufficientMaterial() then
                         "Draw"
                     else
@@ -111,22 +108,19 @@ let handleJoin (games: IMongoCollection<GameState>) : HttpHandler =
             
             do! games.InsertOneAsync(newGame)
             return! json {| Success = true; Message = $"Created room and joined as {req.Color}"; Fen = startFen |} next ctx
-        //trying to implement automatic purging of finised games, work still in progress
-        // elif existingGame.Result <> "" then
-        //     //delete the old finished game
-        //     let! _ = games.DeleteOneAsync(Builders<GameState>.Filter.Eq("_id", gameId))
-        //     do! System.Threading.Tasks.Task.Delay(1000)
-        //     let newGame = 
-        //         match req.Color.ToLower() with
-        //         // FIX 1: Added 'LastMove = ""' to all these records
-        //         | "white" -> { GameId = gameId; WhitePlayerId = req.PlayerId; BlackPlayerId = ""; Fen = startFen; LastMove = "";Result ="" }
-        //         | "black" -> { GameId = gameId; WhitePlayerId = ""; BlackPlayerId = req.PlayerId; Fen = startFen; LastMove = "" ;Result =""}
-        //         | _ -> { GameId = gameId; WhitePlayerId = ""; BlackPlayerId = ""; Fen = startFen; LastMove = "" ;Result =""}
+        elif existingGame.Result <> "" then
+            //delete the old finished game
+            let! _ = games.DeleteOneAsync(Builders<GameState>.Filter.Eq("_id", gameId))
+            do! System.Threading.Tasks.Task.Delay(1000)
+            let newGame = 
+                match req.Color.ToLower() with
+                // FIX 1: Added 'LastMove = ""' to all these records
+                | "white" -> { GameId = gameId; WhitePlayerId = req.PlayerId; BlackPlayerId = ""; Fen = startFen; LastMove = "";Result ="" }
+                | "black" -> { GameId = gameId; WhitePlayerId = ""; BlackPlayerId = req.PlayerId; Fen = startFen; LastMove = "" ;Result =""}
+                | _ -> { GameId = gameId; WhitePlayerId = ""; BlackPlayerId = ""; Fen = startFen; LastMove = "" ;Result =""}
             
-        //     do! games.InsertOneAsync(newGame)
-            
-        //     let! _ = games.InsertOneAsync(newGame)
-        //     return! json {| Success = true; Message = "Game was over. Room Reset!"; Fen = newGame.Fen |} next ctx
+            do! games.InsertOneAsync(newGame)
+            return! json {| Success = true; Message = "Game was over. Room Reset!"; Fen = newGame.Fen |} next ctx
         else
             // CASE B: Game exists - check seat
             let isWhiteRequest = req.Color.ToLower() = "white"
@@ -166,7 +160,7 @@ let handleMove (games: IMongoCollection<GameState>) : HttpHandler =
                 let command = req.Move.Trim().ToLower()
 
                 if command = "resign" then
-                    let result = if isWhitePlayer then "BlackWins" else "WhiteWins"
+                    let result = if isWhitePlayer then "Black Wins" else "White Wins"
                     
                     let update = Builders<GameState>.Update.Set("Result", result)
                     let! _ = games.UpdateOneAsync(Builders<GameState>.Filter.Eq("_id", req.GameId), update)
@@ -227,14 +221,14 @@ let handleGetGame (games: IMongoCollection<GameState>) (gameId: string) : HttpHa
             let turnColor = if fenParts.Length > 1 && fenParts.[1] = "b" then "Black" else "White"
             let message = 
                 if game.Result <> "" then
-                    $"GAME OVER: {game.Result}"
+                    $"Game Over: {game.Result}"
                 else
                     // Check for Draw Offers stored in LastMove
                     match game.LastMove with
                     | "WhiteDraw" -> 
-                        $"It is {turnColor}'s turn. ⚠️ WHITE offers a draw!"
+                        $"It is {turnColor}'s turn. WHITE offers a draw!"
                     | "BlackDraw" -> 
-                        $"It is {turnColor}'s turn. ⚠️ BLACK offers a draw!"
+                        $"It is {turnColor}'s turn. BLACK offers a draw!"
                     | "" -> 
                         $"It is {turnColor}'s turn. (Start of Game)"
                     | move -> 
@@ -251,22 +245,24 @@ let handleGetGame (games: IMongoCollection<GameState>) (gameId: string) : HttpHa
 
 [<EntryPoint>]
 let main args =
-    let builder = WebApplication.CreateBuilder(args)
+    let options = WebApplicationOptions(Args = args, WebRootPath = "WebRoot")
+    let builder = WebApplication.CreateBuilder(options)
     builder.Services.AddGiraffe() |> ignore
     builder.Host.UseContentRoot(Directory.GetCurrentDirectory()) |> ignore
 
     // --- MONGO SETUP ---
-    let DBString= System.Environment.GetEnvironmentVariable("MONGODB_CONNECTION_STRING")// use environmetnal varaibel
+    let DBString= System.Environment.GetEnvironmentVariable("MONGODB_CONNECTION_STRING")
     let mongoClient = MongoClient(DBString)
     let database = mongoClient.GetDatabase("ChessApp")
     let gamesCollection = database.GetCollection<GameState>("Games")
 
     let app = builder.Build()
-
+    app.UseStaticFiles() |> ignore
     // --- ROUTING ---
     let webApp =
         choose [
             route "/"           >=> htmlFile "index.html"
+            route "/login"      >=> htmlFile "login.html"
             route "/api/join"   >=> POST >=> handleJoin gamesCollection
             route "/api/move"   >=> POST >=> handleMove gamesCollection
             GET >=> routef "/api/game/%s" (handleGetGame gamesCollection)
@@ -275,3 +271,4 @@ let main args =
     app.UseGiraffe webApp
     app.Run()
     0
+    
