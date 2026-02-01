@@ -3,6 +3,10 @@
 <head>
     <title>F# Chess Server</title>
     <link rel="stylesheet" href="main.css" /></head>
+    <link rel="stylesheet"
+      href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
 <body>
     <h1>F# Chess Server</h1>
 
@@ -22,6 +26,7 @@
 
         <h3>2. Make a Move</h3>
         <label>Chess Move (e.g., e2e4):</label>
+        
         <input type="text" id="move" placeholder="e2e4" />
 
         <div class="btn-group">
@@ -32,10 +37,66 @@
     <h3>Server Response:</h3>
     <div id="log">Waiting for action...</div>
 
-    <h3>Current Board (FEN):</h3>
-    <code id="fenDisplay">rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1</code>
 
+    <div id="board" style="width: 400px; margin: 20px auto;"></div>
     <script>
+        var side = null;
+        var board = Chessboard('board', {
+            position: 'start',
+            draggable: false,
+            pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png',
+
+        });
+        var sourceSquare = null;
+        var $board = $('#board');
+        function highlightMove(move) {
+
+            $board.find('.square-55d63').removeClass('highlight-move');
+            const from = move.substring(0, 2);
+            const to = move.substring(2, 4);
+            $board.find(`.square-${from}`).addClass('highlight-move');
+            $board.find(`.square-${to}`).addClass('highlight-move');
+        }
+
+        let currentFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+
+        function handleSquareClicks(square){
+            console.log(square)
+            const position = board.position()
+
+            const piece = position[square]
+            //console.log(piece)
+            if (sourceSquare === null){
+                if(piece){
+                    selectSquare(square);
+                }
+                return 
+            }
+            if (piece ){
+                const sourcePieceColor= position[sourceSquare].charAt(0);
+                const clickedPieceColor = piece.charAt(0)
+                if(sourcePieceColor=== clickedPieceColor){
+                    selectSquare(square)
+                    return
+                }
+
+
+            }
+
+            const move = sourceSquare +square;
+            document.getElementById('move').value=move;
+            sendMove();
+        }
+        function selectSquare(square){
+                sourceSquare= square;
+                $('.square-55d63').removeClass('highlight-piece');
+                $(`.square-${square}`).addClass('highlight-piece');   
+        }
+        $(document).on('click', '.square-55d63', function() {
+
+            const square = $(this).attr('data-square');
+            handleSquareClicks(square);
+        });
         const playerId = localStorage.getItem("chessPlayerName");
             if (playerId===null) {
                 window.location.href = "/login"; 
@@ -52,6 +113,7 @@
                 });
                 const result = await response.json();
                 alert(result.message);
+                side = color
                 startPolling();
             } catch (err) {
                 log.innerText = "Error: " + err.message;
@@ -61,12 +123,11 @@
             if (pollId) clearInterval(pollId);
             //changed polling to 2s to save on server time
             pollId = setInterval(refreshGame, 2000);
-            console.log("Polling started...");
+            //console.log("Polling started...");
         }
         async function sendMove() {
             const gameId = document.getElementById('gameId').value;
             const move = document.getElementById('move').value;
-            const fenDisplay = document.getElementById('fenDisplay');
 
             try {
                 const response = await fetch('/api/move', {
@@ -75,23 +136,31 @@
                     body: JSON.stringify({ gameId, playerId, move })
                 });
 
-                const result = await response.json();
+                const data = await response.json();
                 
-                if (result.success) {
-                    alert( "✅ " + result.message);
-                    fenDisplay.innerText = result.fen;
+                if (data.success) {
+                    alert( "✅ " + data.message);
+                    if (currentFEN!== data.fen){
+                        currentFEN= data.fen
+                        board.position(currentFEN);
+                        selectSquare(null)
+                        if (data.lastMove !== "WhiteDraw"&& data.lastMove !== "BlackDraw") highlightMove(move)
+
+
+
+                    }
                 } else {
-                    alert( "❌ " + result.message);
+                    alert( "❌ " + data.message);
+                    selectSquare(null)
                 }
             } catch (err) {
-                alert("Error: " + err.message);
+                alert("Error: " + err.message+ err.stack);
             }
         }
 
 
     async function refreshGame() {
         const gameId = document.getElementById('gameId').value;
-        const fenDisplay = document.getElementById('fenDisplay');
 
         if (!gameId) return;
 
@@ -100,13 +169,15 @@
             if (res.ok) {
                 const data = await res.json();
                 
-                // Check against global state
-                if (data.fen && data.fen !== fenDisplay.value) {
-                    fenDisplay.value = data.fen; // Update global state
-                    
-                    document.getElementById('fenDisplay').innerText = data.fen;
-                    
-                }
+                    if (currentFEN!== data.fen){
+                        currentFEN= data.fen
+                        board.position(currentFEN);
+                        
+                        selectSquare(null)
+                        if (data.lastMove !== "WhiteDraw"&& data.lastMove !== "BlackDraw") highlightMove(data.lastMove)
+
+
+                    }
                 document.getElementById('log').innerText = data.message;
                 if (data.result && data.result !== "") {
                      clearInterval(pollId);

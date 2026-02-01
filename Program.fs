@@ -238,6 +238,7 @@ let handleGetGame (games: IMongoCollection<GameState>) (gameId: string) : HttpHa
                 Success = true
                 Fen = game.Fen
                 Message = message
+                LastMove= game.LastMove
                 result=game.Result
             |} next ctx
     }
